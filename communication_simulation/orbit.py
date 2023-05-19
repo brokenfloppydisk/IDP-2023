@@ -3,6 +3,7 @@ from matplotlib import animation
 
 # Constants
 G = 6.67e-11 # Gravity (m^3/(kg*s^2))
+C = 299_792_458 # Speed of Light (m/s)
 AU = 1.5e11 # Astronomical Unit (m)
 DaySeconds = 24*60*60 # 1 day in seconds
 
@@ -16,6 +17,14 @@ t_end = 5 * 365 * DaySeconds
 fig, ax = plt.subplots(figsize=(10,10))
 ax.set_aspect('equal')
 ax.grid()
+
+def sign(num: float) -> int:
+    if num == 0:
+        return 0
+    elif num > 1:
+        return 1
+    else:
+        return -1
 
 class Body:
     # List of all celestial bodies
@@ -38,7 +47,7 @@ class Body:
         self.vx: float = vx0
         self.vy: float = vy0
 
-        self.line, = ax.plot([], [], '-g', lw=linewidth, c=color)
+        self.line, = ax.plot([], [], lw=linewidth, c=color)
 
         self.point, = ax.plot([x0], [y0], marker="o", markersize=markersize, markeredgecolor=color, markerfacecolor=color)
         self.text: plt.text = ax.text(x0, y0, name)
@@ -98,9 +107,41 @@ def simulate():
             body.update_pos()
         t += dt
 
+# Runner code
+
+sun = Body("The Sun", 2.0e30, 0, 0, 0, 0, "yellow", 1, 7)
+earth = Body("Earth", 5.972e24, 1.0167*AU, 0, 0, 29290, "blue", 1, 4)
+mars = Body("Mars", 6.39e23, 1.666*AU, 0, 0, 21970, "red", 1, 4)
+
+earth_mars_distance, = plt.plot([], [], linestyle="--")
+earth_mars_text = plt.text(0, 0, f"Distance: {0:.2f} AU")
+
+def get_mars_distance(i):
+    return ((mars.xpositions[i] - earth.xpositions[i])**2 + (mars.ypositions[i] - earth.ypositions[i])**2)**0.5
+
 
 def update_animation(i):
     output_list = []
+
+    earth_x = earth.xpositions[i]
+    earth_y = earth.ypositions[i]
+    mars_x = mars.xpositions[i]
+    mars_y = mars.ypositions[i]
+
+    earth_mars_distance.set_data([earth_x, mars_x], [earth_y, mars_y])
+    output_list.append(earth_mars_distance)
+
+    earth_mars_text_x = (2*earth_x + mars_x)/3
+    earth_mars_text_y = (2*earth_y + mars_y)/3
+
+    distance = get_mars_distance(i)
+
+    earth_mars_text.set_text(
+        f"Distance:{(distance / AU):.2f} AU\nTime to transmit:{((distance / C)/60):.0f} minutes")
+
+    earth_mars_text.set_position((earth_mars_text_x, earth_mars_text_y))
+
+    output_list.append(earth_mars_text)
 
     for body in Body.BodyList:
         body.line.set_data(body.xpositions[0:i], body.ypositions[0:i])
@@ -117,11 +158,6 @@ def update_animation(i):
 
     return tuple(output_list)
 
-# Runner code
-
-sun = Body("The Sun", 2.0e30, 0, 0, 0, 0, "yellow", 1, 7)
-earth = Body("Earth", 5.972e24, 1.0167*AU, 0, 0, 29290, "blue", 1, 4)
-mars = Body("Mars", 6.39e23, 1.666*AU, 0, 0, 21970, "red", 1, 4)
 
 simulate()
 
