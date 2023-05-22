@@ -175,33 +175,35 @@ def update_animation(i):
 
     output_list.append(earth_mars_text)
 
-    mars_x_force = mars.xvelocities[i] * mars.mass / dt
-    mars_y_force = mars.yvelocities[i] * mars.mass / dt
+    # mars_x_force = mars.xvelocities[i] * mars.mass / dt
+    # mars_y_force = mars.yvelocities[i] * mars.mass / dt
 
-    mars_force_magnitude = (mars_x_force**2 + mars_y_force**2)**0.5
+    # mars_force_magnitude = (mars_x_force**2 + mars_y_force**2)**0.5
     mars_velocity_magnitude = (mars.xvelocities[i]**2 + mars.yvelocities[i]**2)**0.5
 
     mars_vector.set_data(x=mars_x, dx=mars.xvelocities[i]*5e6, y=mars_y, dy=mars.yvelocities[i]*5e6)
-    mars_force_text.set_text(f"{'%.2e' % mars_force_magnitude} N\n{mars_velocity_magnitude:.2f} m/s")
+    # mars_force_text.set_text(f"{'%.2e' % mars_force_magnitude} N\n{mars_velocity_magnitude:.2f} m/s")
+    mars_force_text.set_text(f"{mars_velocity_magnitude:.2f} m/s")
     mars_force_text.set_position((
         mars.xpositions[i] + mars.xvelocities[i]*5e6, 
-        mars.ypositions[i] + mars.yvelocities[i]*5e6 - 1.5e10
+        mars.ypositions[i] + mars.yvelocities[i]*5e6 - 3e10
     ))
 
     output_list.append(mars_vector)
     output_list.append(mars_force_text)
 
-    earth_x_force = earth.xvelocities[i] * earth.mass / dt
-    earth_y_force = earth.yvelocities[i] * earth.mass / dt
+    # earth_x_force = earth.xvelocities[i] * earth.mass / dt
+    # earth_y_force = earth.yvelocities[i] * earth.mass / dt
 
-    earth_force_magnitude = (earth_x_force**2 + earth_y_force**2)**0.5
+    # earth_force_magnitude = (earth_x_force**2 + earth_y_force**2)**0.5
     earth_velocity_magnitude = (earth.xvelocities[i]**2 + earth.yvelocities[i]**2)**0.5
 
     earth_vector.set_data(x=earth_x, dx=earth.xvelocities[i]*5e6, y=earth_y, dy=earth.yvelocities[i]*5e6)
-    earth_force_text.set_text(f"{'%.2e' % earth_force_magnitude} N\n{earth_velocity_magnitude:.2f} m/s")
+    # earth_force_text.set_text(f"{'%.2e' % earth_force_magnitude} N\n{earth_velocity_magnitude:.2f} m/s")
+    earth_force_text.set_text(f"{earth_velocity_magnitude:.2f} m/s")
     earth_force_text.set_position((
         earth.xpositions[i] + earth.xvelocities[i]*5e6, 
-        earth.ypositions[i] + earth.yvelocities[i]*5e6 - 1.5e10
+        earth.ypositions[i] + earth.yvelocities[i]*5e6 - 3e10
     ))
 
     output_list.append(earth_vector)
