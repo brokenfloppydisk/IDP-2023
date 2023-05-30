@@ -3,9 +3,6 @@ import csv
 # import matplotlib.pyplot as plt
 # from matplotlib import animation
 
-water_mined_per_day = int(
-    input("How much water should be mined per day (in Gallons)? "))
-
 # fig, ax = plt.subplots(figsize=(10, 10))
 # stored_water, = ax.plot([], [], lw=5, c="blue")
 
@@ -25,13 +22,17 @@ NUM_PEOPLE = 20
 
 # ISS has 1920 liters of water for 7 people for 3 months
 # https://ntrs.nasa.gov/api/citations/20180006341/downloads/20180006341.pdf
-START_WATER = (7/3) * liters_to_gal(1920 * (20 / 7))
+START_WATER = (7/3) * liters_to_gal(1920 * (NUM_PEOPLE / 7))
+
+# https://www.nasa.gov/sites/default/files/atoms/files/mars_ice_drilling_assessment_v6_for_public_release.pdf
+MAX_WATER_STORED = (NUM_PEOPLE) * liters_to_gal(1000 * 20)
 
 # Total Water Lost
 total_water_used: float = 0
 total_water_lost: float = 0
 total_water_recycled: float = 0
 recycle_percentage: float = 0.85
+water_stored: float = START_WATER
 
 # Water Extraction
 total_water_gained: int = 0
@@ -70,84 +71,116 @@ def get_individual_space_water_usage() -> "tuple[float, float]":
 
     return (water_used, water_recycled)
 
+def simulate() -> None:
+    water_mined_per_day = int(
+        input("How much water should be mined per day (in Gallons)? "))
 
-# Open the CSV file in write mode and create a CSV writer
-with open(filename, 'w', newline='') as csvfile:
-    writer = csv.writer(csvfile)
-    print("Space flight water usage: ")
+    global total_water_used
+    global total_water_lost
+    global total_water_recycled
+    global total_water_gained
+    global water_stored
+    total_water_used = 0
+    total_water_lost = 0
+    total_water_recycled = 0
+    total_water_gained = 0
+    water_stored = 0
 
-    writer.writerow(["Day", "Water Stored", "Water Used Today", "Water Gained Today",
-                    "Water Lost Today", "Water Recycled Today",
-                    "Total Water Used", "Total Water Lost",
-                    "Total Water Gained", "Total Water Recycled"])
+    # Open the CSV file in write mode and create a CSV writer
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
 
-    water_stored = START_WATER
+        writer.writerow(["Day", "Water Stored", "Water Used Today", "Water Gained Today",
+                        "Water Lost Today", "Water Recycled Today",
+                        "Total Water Used", "Total Water Lost",
+                        "Total Water Gained", "Total Water Recycled"])
 
-    # During Flight
-    for day in range(1, FLIGHT_DAYS + 1):
-        water_used_today = 0
-        water_lost_today = 0
-        water_recycled_today = 0
+        water_stored = START_WATER
 
-        for x in range(NUM_PEOPLE):
-            individual_water, individual_recycled = get_individual_space_water_usage()
-            water_used_today += individual_water
-            water_recycled_today += individual_recycled
+        # During Flight
+        for day in range(1, FLIGHT_DAYS + 1):
+            water_used_today = 0
+            water_lost_today = 0
+            water_recycled_today = 0
 
-        water_lost_today = water_used_today - water_recycled_today
+            for x in range(NUM_PEOPLE):
+                individual_water, individual_recycled = get_individual_space_water_usage()
+                water_used_today += individual_water
+                water_recycled_today += individual_recycled
 
-        total_water_used += water_used_today
-        total_water_lost += water_lost_today
-        total_water_recycled += water_recycled_today
+            water_lost_today = water_used_today - water_recycled_today
 
-        water_stored -= water_lost_today
+            total_water_used += water_used_today
+            total_water_lost += water_lost_today
+            total_water_recycled += water_recycled_today
 
-        # Save the data
-        writer.writerow([day, water_stored, water_used_today, 0,
-                        water_lost_today, water_recycled_today,
-                        total_water_used, total_water_lost,
-                        total_water_gained, total_water_recycled])
+            water_stored -= water_lost_today
 
-        print(
-            f"Day: {day} | Water Left: {water_stored} L | Water Used: {water_used_today} | ", end="")
-        print(
-            f"Water Lost: {water_lost_today} L | Water Recycled: {water_recycled_today} | ", end="")
-        print(
-            f"Total Water Used: {total_water_used} L | Total Water Lost: {total_water_lost} | ", end="")
-        print(
-            f"Total Water Gained: {total_water_gained} L | Total Water Recycled: {total_water_recycled}")
+            # Save the data
+            writer.writerow([day, water_stored, water_used_today, 0,
+                            water_lost_today, water_recycled_today,
+                            total_water_used, total_water_lost,
+                            total_water_gained, total_water_recycled])
 
-    print("Colonization water usage: ")
+            # print(f"Day: {day} | Water Left: {water_stored} L | Water Used: {water_used_today} | ", end="")
+            # print(f"Water Lost: {water_lost_today} L | Water Recycled: {water_recycled_today} | ", end="")
+            # print(f"Total Water Used: {total_water_used} L | Total Water Lost: {total_water_lost} | ", end="")
+            # print(f"Total Water Gained: {total_water_gained} L | Total Water Recycled: {total_water_recycled}")
+        
+        print("\nSpace water statistics: ")
+        print(f"Water left in storage: {water_stored:.2f}")
+        print(f"Total Water Used: {total_water_used:.2f} L | Total Water Lost: {total_water_lost:.2f}")
+        print(f"Total Water Gained: {total_water_gained:.2f} L | Total Water Recycled: {total_water_recycled:.2f}")
 
-    # During Colonization
-    for day in range(1, COLONY_DAYS + 1):
-        water_used_today = 0
-        water_lost_today = 0
-        water_recycled_today = 0
+        colonization_water_used = 0.0
+        colonization_water_lost = 0.0
+        colonization_water_gained = 0.0
+        colonization_water_recycled = 0.0
 
-        for x in range(NUM_PEOPLE):
-            individual_water = get_individual_water_usage(65.5)
-            water_used_today += individual_water
-            water_recycled_today += individual_water * get_recycle_percentage()
+        # During Colonization
+        for day in range(1, COLONY_DAYS + 1):
+            water_used_today = 0
+            water_lost_today = 0
+            water_recycled_today = 0
 
-        water_lost_today = water_used_today - water_recycled_today
+            for x in range(NUM_PEOPLE):
+                individual_water = get_individual_water_usage(65.5)
+                water_used_today += individual_water
+                water_recycled_today += individual_water * get_recycle_percentage()
 
-        water_gained_today = water_mined_per_day
+            water_lost_today = water_used_today - water_recycled_today
 
-        total_water_lost += (water_lost_today)
-        total_water_used += water_used_today
-        total_water_recycled += water_recycled_today
-        total_water_gained += water_gained_today
+            water_gained_today = water_mined_per_day
 
-        water_stored += water_gained_today - water_lost_today
+            colonization_water_lost += (water_lost_today)
+            colonization_water_used += water_used_today
+            colonization_water_recycled += water_recycled_today
+            colonization_water_gained += water_gained_today
 
-        # Print daily statistics
-        writer.writerow([day, water_stored, water_used_today, water_gained_today,
-                        water_lost_today, water_recycled_today,
-                        total_water_gained, total_water_lost,
-                        total_water_gained, total_water_recycled])
+            water_stored += water_gained_today - water_lost_today
+            # Stop water stored from exceeding max
+            water_stored = min(water_stored, MAX_WATER_STORED)
 
-        print(f"Day: {day} | Water Left: {water_stored} L | Water Used: {water_used_today}")
-        print(f"Water Lost: {water_lost_today} L | Water Recycled: {water_recycled_today}")
-        print(f"Total Water Used: {total_water_used} L | Total Water Lost: {total_water_lost}")
-        print(f"Total Water Gained: {total_water_gained} L | Total Water Recycled: {total_water_recycled}")
+            # Print daily statistics
+            writer.writerow([day, water_stored, water_used_today, water_gained_today,
+                            water_lost_today, water_recycled_today,
+                            colonization_water_gained, colonization_water_lost,
+                            colonization_water_gained, colonization_water_recycled])
+
+        total_water_lost += colonization_water_lost
+        total_water_used += colonization_water_used
+        total_water_recycled += colonization_water_recycled
+        total_water_gained += colonization_water_gained
+
+        print("\nColonization water statistics: ")
+        print(f"Water left in storage: {water_stored:.2f}")
+        print(f"Colonization Water Used: {colonization_water_used:.2f} L | Colonization Water Lost: {colonization_water_lost:.2f}")
+        print(f"Colonization Water Gained: {colonization_water_gained:.2f} L | Colonization Water Recycled: {colonization_water_recycled:.2f}")
+        
+        print("\nTotal statistics: ")
+        print(f"Water left in storage: {water_stored:.2f}")
+        print(f"Total Water Used: {total_water_used:.2f} L | Total Water Lost: {total_water_lost:.2f}")
+        print(f"Total Water Gained: {total_water_gained:.2f} L | Total Water Recycled: {total_water_recycled:.2f}")
+
+
+simulate()
