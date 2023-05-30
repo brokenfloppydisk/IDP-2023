@@ -1,18 +1,13 @@
 import random
 import csv
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 # from matplotlib import animation
-
-# fig, ax = plt.subplots(figsize=(10, 10))
-# stored_water, = ax.plot([], [], lw=5, c="blue")
 
 # Variables
 filename = "data.csv"
 
-
 def liters_to_gal(liters: float) -> float:
     return liters / 3.78541
-
 
 # Time
 FLIGHT_DAYS: int = 214
@@ -27,12 +22,28 @@ START_WATER = (7/3) * liters_to_gal(1920 * (NUM_PEOPLE / 7))
 # https://www.nasa.gov/sites/default/files/atoms/files/mars_ice_drilling_assessment_v6_for_public_release.pdf
 MAX_WATER_STORED = (NUM_PEOPLE) * liters_to_gal(1000 * 20)
 
+END_OF_WATER_RATIONING = 60
+
+MINING_FAIL_CHANCE = 0.05
+
+MINING_SETUP_PERIOD = 60
+DAYS_UNTIL_FARMING = 60
+FARMING_WATER_USED = 140 / 7 # Soybeans require 140 gal per week
+
+WATER_RATION_THRESHOLD = START_WATER * 2
+
 # Total Water Lost
 total_water_used: float = 0
 total_water_lost: float = 0
 total_water_recycled: float = 0
-recycle_percentage: float = 0.85
+RECYCLE_PERCENTAGE: float = 0.85
 water_stored: float = START_WATER
+
+water_stored_list = []
+water_used_list = []
+water_lost_list = []
+water_recycled_list = []
+water_gained_list = []
 
 # Water Extraction
 total_water_gained: int = 0
@@ -43,15 +54,15 @@ current_water = 0
 
 def get_recycle_percentage() -> float:
     """
-    Returns 75% - 85%
+    Recycling has a maximum of 85% efficiency, but some of the recycling machines may break, decreasing efficiency (temporarily)
     """
-    return recycle_percentage + (random.random() * 0.1) - 0.05
+    return (RECYCLE_PERCENTAGE + (random.random() * 0.1) - 0.05)
 
 
-# Returns a random percentage between 1-5% to indicate alteration
+# Returns a random percentage up to 10% to indicate alteration
 def get_water_deviation() -> float:
     #-5% to 5% deviation
-    return random.random() * 0.1 - 0.05
+    return random.random() * 0.2 - 0.1
 
     # Returns the water usage for an individual with the alterations accounted for
 
@@ -86,6 +97,12 @@ def simulate() -> None:
     total_water_gained = 0
     water_stored = 0
 
+    global water_stored_list
+    global water_used_list
+    global water_lost_list
+    global water_recycled_list
+    global water_gained_list
+
     # Open the CSV file in write mode and create a CSV writer
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -116,6 +133,12 @@ def simulate() -> None:
 
             water_stored -= water_lost_today
 
+            water_stored_list.append(water_stored)
+            water_gained_list.append(0)
+            water_recycled_list.append(water_recycled_today)
+            water_used_list.append(water_used_today)
+            water_lost_list.append(water_lost_today)
+
             # Save the data
             writer.writerow([day, water_stored, water_used_today, 0,
                             water_lost_today, water_recycled_today,
@@ -137,6 +160,10 @@ def simulate() -> None:
         colonization_water_gained = 0.0
         colonization_water_recycled = 0.0
 
+        days_failing = 0
+        fail_percent = 0
+        mining_efficiency = 1
+
         # During Colonization
         for day in range(1, COLONY_DAYS + 1):
             water_used_today = 0
@@ -144,22 +171,80 @@ def simulate() -> None:
             water_recycled_today = 0
 
             for x in range(NUM_PEOPLE):
-                individual_water = get_individual_water_usage(65.5)
+                # Colonists split up water rations over a schedule 
+                cycle = x + day
+                if water_stored < WATER_RATION_THRESHOLD:
+                    # 2.5 gal hygiene
+                    # 1 gal drinking
+                    individual_water = get_individual_water_usage(3.5)
+                    if cycle % 3 == 0:
+                        # shower (20 gal) (every 3 days)
+                        individual_water += get_individual_water_usage(20)
+                    if cycle % 4 == 0:
+                        # Washing machine (15 gal) (every 4 days)
+                        individual_water += get_individual_water_usage(15)
+                    if cycle % 2 == 0:
+                        # Dishwasher (5 gal) (every 2 days)
+                        individual_water += get_individual_water_usage(5)
+                else:
+                    # 5 gal dishwasher
+                    # 20 gal shower
+                    # space toilet = no water
+                    # 2.5 gal hygiene
+                    # 1 gal drinking
+                    individual_water = get_individual_water_usage(5 + 20 + 2.5 + 1)
+                    if cycle % 4 == 0:
+                        # Washing machine (15 gal) (every 4 days)
+                        individual_water += get_individual_water_usage(15)
                 water_used_today += individual_water
                 water_recycled_today += individual_water * get_recycle_percentage()
 
+            if day > DAYS_UNTIL_FARMING:
+                water_used_today += FARMING_WATER_USED
+
             water_lost_today = water_used_today - water_recycled_today
 
-            water_gained_today = water_mined_per_day
+            # Mining productivity goes up 5% at a time for the first 30 days
+            setup_factor = round(min(1, day / MINING_SETUP_PERIOD) * 20) / 20
 
-            colonization_water_lost += (water_lost_today)
+            # 20% deviation in mining + setup factor
+            water_mined_today = water_mined_per_day * (1 + random.random() * 0.4 - 0.2) * setup_factor * mining_efficiency
+
+            # Mining efficiency will vary by up to +-5%
+            mining_efficiency += (random.random() * 0.1 - 0.05)
+            # Mining efficiency goes from 20 - 100%
+            mining_efficiency = max(min(1, mining_efficiency), 0.2)
+
+            # A machine can fail for up to 5 days
+            if (random.random() < MINING_FAIL_CHANCE):
+                days_failing = random.randint(1, 5)
+                fail_percent = random.random()
+
+            if (days_failing > 0):
+                water_mined_today *= fail_percent
+                days_failing -= 1
+
+            water_gained_today = water_mined_today
+
+            colonization_water_lost += water_lost_today
             colonization_water_used += water_used_today
             colonization_water_recycled += water_recycled_today
             colonization_water_gained += water_gained_today
+            
+            total_water_lost += water_lost_today
+            total_water_used += water_used_today
+            total_water_recycled += water_recycled_today
+            total_water_gained += water_gained_today
 
             water_stored += water_gained_today - water_lost_today
             # Stop water stored from exceeding max
             water_stored = min(water_stored, MAX_WATER_STORED)
+
+            water_stored_list.append(water_stored)
+            water_gained_list.append(water_gained_today)
+            water_recycled_list.append(water_recycled_today)
+            water_used_list.append(water_used_today)
+            water_lost_list.append(water_lost_today)
 
             # Print daily statistics
             writer.writerow([day, water_stored, water_used_today, water_gained_today,
@@ -167,10 +252,7 @@ def simulate() -> None:
                             colonization_water_gained, colonization_water_lost,
                             colonization_water_gained, colonization_water_recycled])
 
-        total_water_lost += colonization_water_lost
-        total_water_used += colonization_water_used
-        total_water_recycled += colonization_water_recycled
-        total_water_gained += colonization_water_gained
+        
 
         print("\nColonization water statistics: ")
         print(f"Water left in storage: {water_stored:.2f}")
@@ -184,3 +266,29 @@ def simulate() -> None:
 
 
 simulate()
+
+days_list = [day for day in range(1, FLIGHT_DAYS + COLONY_DAYS + 1)]
+
+fig, axs = plt.subplots(3)
+fig.set_size_inches(12, 8)
+fig.suptitle("Water Usage on Mars")
+fig.supxlabel("Days Since Mission Start")
+
+# for ax in axs:
+#     ax.xlabel("Days since mission launch")
+
+axs[0].plot(days_list, water_stored_list)
+axs[0].legend(["Water Stored"])
+axs[0].set(ylabel="Water (gal)")
+
+axs[1].scatter(days_list, water_used_list, c="red", s=0.5)
+axs[1].scatter(days_list, water_lost_list, c="orange", s=0.5)
+axs[1].scatter(days_list, water_recycled_list, c="green", s=0.5)
+axs[1].legend(["Water Used", "Water Lost", "Water Recycled"])
+axs[1].set(ylabel="Water (gal)")
+
+axs[2].scatter(days_list, water_gained_list, c="green", s=0.5)
+axs[2].legend(["Daily Water Mined"])
+axs[2].set(ylabel="Water (gal)")
+
+plt.show()
