@@ -84,7 +84,7 @@ def get_individual_space_water_usage() -> "tuple[float, float]":
 
 def simulate() -> None:
     water_mined_per_day = int(
-        input("How much water should be mined per day (in Gallons)? "))
+        input("What should be the maximum water mining capacity (in gallons)? "))
 
     global total_water_used
     global total_water_lost
