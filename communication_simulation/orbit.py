@@ -1,22 +1,53 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import matplotlib.gridspec as gridspec
+import numpy as np
 
 # Constants
 G = 6.67e-11 # Gravitational Constant (m^3/(kg*s^2))
 C = 299_792_458 # Speed of Light (m/s)
 AU = 1.5e11 # Astronomical Unit (m)
-DaySeconds = 24*60*60 # 1 day in seconds
+DAY_SECONDS = 24*60*60 # 1 day in seconds
+
+SUN_RADIUS = 695_700_000 # Radius of the sun (m)
+EARTH_RADIUS = 6.378e6
+MARS_RADIUS = 3.3895e6
 
 # Globals
 t: float = 0
-# 1 day (in seconds)
-dt: float = DaySeconds
-# Simulate 1000 years
-t_end = 1000 * 365 * DaySeconds
+# Simulate 4 times a day
+dt: float = DAY_SECONDS / 4
+# Simulate 5 years
+t_end = 5 * 365 * DAY_SECONDS
 
-fig, ax = plt.subplots(figsize=(10,10))
-ax.set_aspect('equal')
-ax.grid()
+fig = plt.figure()
+fig.set_size_inches(12, 10)
+
+gs = gridspec.GridSpec(2, 2, height_ratios=[3,1])
+gs.update(wspace=0.5)
+
+sim_axis = fig.add_subplot(gs[0, 0:])
+dist_ax = fig.add_subplot(gs[1, 0])
+time_ax = fig.add_subplot(gs[1, 1])
+fig.suptitle("Solar System Simulation")
+# fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10,8), height_ratios=[3, 1])
+
+sim_axis.set_aspect('equal')
+sim_axis.grid()
+sim_axis.set_facecolor('gray')
+sim_axis.axis('equal')
+sim_axis.set_xlim(-4 * AU, 4 * AU)
+sim_axis.set_ylim(-2 * AU, 2 * AU)
+
+dist_ax.grid()
+dist_ax.set()
+time_ax.grid()
+time_ax.set()
+
+fig.set_facecolor('gray')
+
+def distance(x1: float, y1: float, x2: float, y2: float) -> float:
+    return ((x2 - x1)**2 + (y2 - y1)**2)**0.5
 
 def sign(num: float) -> int:
     if num == 0:
@@ -30,7 +61,7 @@ class Body:
     # List of all celestial bodies
     BodyList: list['Body'] = []
 
-    def __init__(self, name: str, mass: float,
+    def __init__(self, name: str, mass: float, radius: float,
                 x0: float=0, y0: float=0,
                 vx0: float=0, vy0: float=0,
                 color: str="blue", linewidth: float=1, 
@@ -50,10 +81,11 @@ class Body:
         self.vx: float = vx0
         self.vy: float = vy0
 
-        self.line, = ax.plot([], [], lw=linewidth, c=color)
+        self.line, = sim_axis.plot([], [], lw=linewidth, c=color)
 
-        self.point, = ax.plot([x0], [y0], marker="o", markersize=markersize, markeredgecolor=color, markerfacecolor=color)
-        self.text: plt.text = ax.text(x0, y0, name)
+        self.point, = sim_axis.plot([x0], [y0], marker="o", markersize=markersize, markeredgecolor=color, markerfacecolor=color)
+        # self.point = plt.Circle((x0, y0), radius, color=color)
+        self.text: plt.text = sim_axis.text(x0, y0, name)
 
         # Add to the list of celestial bodies
         Body.BodyList.append(self)
@@ -103,33 +135,42 @@ class Body:
             return self.name == other.name
         return False
 
+days = []
 
 def simulate():
+    global days
     global t
     # 5 years of time (in seconds)
     while t < t_end:
         for body in Body.BodyList:
             body.update_pos()
+        days.append(t)
         t += dt
+
 
 # Runner code
 
-sun = Body("The Sun", 2.0e30, 0, 0, 0, 0, "yellow", 1, 7)
-earth = Body("Earth", 5.972e24, 1.0167*AU, 0, 0, 29290, "blue", 1, 4)
-mars = Body("Mars", 6.39e23, 1.666*AU, 0, 0, 21970, "red", 1, 4)
+sun = Body("The Sun", 2.0e30, SUN_RADIUS, 0, 0, 0, 0, "yellow", 1, 7)
+earth = Body("Earth", 5.972e24, EARTH_RADIUS, 1.0167*AU, 0, 0, 29290, "blue", 1, 4)
+mars = Body("Mars", 6.39e23, MARS_RADIUS, 1.666*AU, 0, 0, 21970, "red", 1, 4)
 
-earth_mars_distance, = plt.plot([], [], linestyle="--")
-earth_mars_text = plt.text(0, 0, f"Distance: {0:.2f} AU")
+earth_mars_distance, = sim_axis.plot([], [], linestyle="--", color="green", linewidth=2)
+earth_mars_text = sim_axis.text(0, 0, f"Distance: {0:.2f} AU")
 
-# mars_sun_distance, = plt.plot([], [], linestyle="--")
-# mars_sun_text = plt.text(0, 0, f"Distance: {0:.2f} AU")
+sun_distance, = sim_axis.plot([], [], linestyle="--", color="orange", linewidth=1)
 
-# mars_vector = plt.plot([], [], linestyle="->")
-mars_vector = plt.arrow(0, 0, 0, 0, head_width=10e9, shape='full', head_starts_at_zero=False, animated=True)
-mars_force_text = plt.text(0, 0, f"Magnitude: {0:.2f}N")
+# mars_sun_distance, = sim_axis.plot([], [], linestyle="--")
+# mars_sun_text = sim_axis.text(0, 0, f"Distance: {0:.2f} AU")
 
-earth_vector = plt.arrow(0, 0, 0, 0, head_width=10e9, shape='full', head_starts_at_zero=False, animated=True)
-earth_force_text = plt.text(0, 0, f"Magnitude: {0:.2f}N")
+# mars_vector = sim_axis.plot([], [], linestyle="->")
+mars_vector = sim_axis.arrow(0, 0, 0, 0, head_width=10e9, shape='full', head_starts_at_zero=False, animated=True)
+mars_force_text = sim_axis.text(0, 0, f"Magnitude: {0:.2f}N")
+
+earth_vector = sim_axis.arrow(0, 0, 0, 0, head_width=10e9, shape='full', head_starts_at_zero=False, animated=True)
+earth_force_text = sim_axis.text(0, 0, f"Magnitude: {0:.2f}N")
+
+distance_graph, = dist_ax.plot([], [], linestyle="-", color="red", linewidth=1)
+time_graph, = time_ax.plot([], [], linestyle="-", color="red", linewidth=1)
 
 def get_mars_earth_distance(i):
     return ((mars.xpositions[i] - earth.xpositions[i])**2 + (mars.ypositions[i] - earth.ypositions[i])**2)**0.5
@@ -140,6 +181,8 @@ def get_mars_sun_distance(i):
 simulate()
 
 earth_mars_distances = [get_mars_earth_distance(i) for i in range(len(earth.xpositions))]
+earth_mars_distances_au = [distance / AU for distance in earth_mars_distances]
+earth_mars_times = [distance / C / 60 for distance in earth_mars_distances]
 # mars_sun_distances = [get_mars_sun_distance(i) for i in range(len(mars.xpositions))]
 
 def update_animation(i):
@@ -149,8 +192,52 @@ def update_animation(i):
     earth_y = earth.ypositions[i]
     mars_x = mars.xpositions[i]
     mars_y = mars.ypositions[i]
-    # sun_x = sun.xpositions[i]
-    # sun_y = sun.ypositions[i]
+    sun_x = sun.xpositions[i]
+    sun_y = sun.ypositions[i]
+
+    curr_earth_mars_distance = earth_mars_distances[i]
+    
+    # https://stackoverflow.com/a/1079478
+
+    earth_sun_x, earth_sun_y = (sun_x - earth_x, sun_y - earth_y)
+    earth_mars_x, earth_mars_y = (mars_x - earth_x, mars_y - earth_y)
+
+    # u * v / |v|**2
+    k = (earth_sun_x*earth_mars_x + earth_sun_y*earth_mars_y)/(earth_mars_x**2 + earth_mars_y**2)
+
+    # P_u(v) = v(u * v) / |v|**2
+    projection_x_length, projection_y_length = (earth_mars_x * k, earth_mars_y * k)
+
+    scale = projection_x_length / earth_mars_x if abs(earth_mars_x) > abs(earth_mars_y) else projection_y_length / earth_mars_y
+
+    distance_to_sun = 0
+
+    if (scale < 0):
+        distance_to_sun = 1e30 # Basically infinity, because it's impossible to intersect the sun
+        sun_distance.set_data([earth_x, sun_x], [earth_y, sun_y])
+    elif (scale >= 1):
+        distance_to_sun = 1e30 # Basically infinity, because it's impossible to intersect the sun
+        sun_distance.set_data([mars_x, sun_x], [mars_y, sun_y])
+    else:
+        projection_x = earth_x + projection_x_length
+        projection_y = earth_y + projection_y_length
+        distance_to_sun = ((projection_x - sun_x)**2 + (projection_y - sun_y)**2)**0.5
+        sun_distance.set_data([projection_x_length + earth_x, sun_x], [projection_y_length + earth_y, sun_y])
+    
+    is_conjunction = distance_to_sun < SUN_RADIUS + 2*EARTH_RADIUS
+
+    output_list.append(sun_distance)
+
+    if (not is_conjunction):
+        earth_mars_distance.set(color='green', linestyle='--', linewidth=2)
+        earth_mars_text.set_text(
+            f"Distance:{(curr_earth_mars_distance / AU):.2f} AU\nTime to transmit:{((curr_earth_mars_distance / C)/60):.0f} minutes"
+        )
+    else:
+        earth_mars_distance.set(color='red', linestyle='dotted', linewidth=1)
+        earth_mars_text.set_text(
+            f"Distance:{(curr_earth_mars_distance / AU):.2f} AU\nTime to transmit: infinite (solar conjunction)"
+        )
 
     earth_mars_distance.set_data([earth_x, mars_x], [earth_y, mars_y])
     output_list.append(earth_mars_distance)
@@ -161,15 +248,10 @@ def update_animation(i):
     earth_mars_text_x = (2*earth_x + mars_x)/3
     earth_mars_text_y = (2*earth_y + mars_y)/3
 
-    curr_earth_mars_distance = earth_mars_distances[i]
-
     # mars_sun_text_x = (2*mars_x + sun_x)/3
     # mars_sun_text_y = (2*mars_y + sun_y)/3
 
     # curr_mars_sun_distance = mars_sun_distances[i]
-
-    earth_mars_text.set_text(
-        f"Distance:{(curr_earth_mars_distance / AU):.2f} AU\nTime to transmit:{((curr_earth_mars_distance / C)/60):.0f} minutes")
 
     earth_mars_text.set_position((earth_mars_text_x, earth_mars_text_y))
 
@@ -181,12 +263,12 @@ def update_animation(i):
     # mars_force_magnitude = (mars_x_force**2 + mars_y_force**2)**0.5
     mars_velocity_magnitude = (mars.xvelocities[i]**2 + mars.yvelocities[i]**2)**0.5
 
-    mars_vector.set_data(x=mars_x, dx=mars.xvelocities[i]*5e6, y=mars_y, dy=mars.yvelocities[i]*5e6)
+    mars_vector.set_data(x=mars_x, dx=mars.xvelocities[i]*2e6, y=mars_y, dy=mars.yvelocities[i]*2e6)
     # mars_force_text.set_text(f"{'%.2e' % mars_force_magnitude} N\n{mars_velocity_magnitude:.2f} m/s")
     mars_force_text.set_text(f"{mars_velocity_magnitude:.2f} m/s")
     mars_force_text.set_position((
-        mars.xpositions[i] + mars.xvelocities[i]*5e6, 
-        mars.ypositions[i] + mars.yvelocities[i]*5e6 - 3e10
+        mars.xpositions[i] + mars.xvelocities[i]*3e6, 
+        mars.ypositions[i] + mars.yvelocities[i]*2e6 - 3e10
     ))
 
     output_list.append(mars_vector)
@@ -198,12 +280,12 @@ def update_animation(i):
     # earth_force_magnitude = (earth_x_force**2 + earth_y_force**2)**0.5
     earth_velocity_magnitude = (earth.xvelocities[i]**2 + earth.yvelocities[i]**2)**0.5
 
-    earth_vector.set_data(x=earth_x, dx=earth.xvelocities[i]*5e6, y=earth_y, dy=earth.yvelocities[i]*5e6)
+    earth_vector.set_data(x=earth_x, dx=earth.xvelocities[i]*2e6, y=earth_y, dy=earth.yvelocities[i]*2e6)
     # earth_force_text.set_text(f"{'%.2e' % earth_force_magnitude} N\n{earth_velocity_magnitude:.2f} m/s")
     earth_force_text.set_text(f"{earth_velocity_magnitude:.2f} m/s")
     earth_force_text.set_position((
-        earth.xpositions[i] + earth.xvelocities[i]*5e6, 
-        earth.ypositions[i] + earth.yvelocities[i]*5e6 - 3e10
+        earth.xpositions[i] + earth.xvelocities[i]*2e6, 
+        earth.ypositions[i] + earth.yvelocities[i]*2e6 - 3e10
     ))
 
     output_list.append(earth_vector)
@@ -218,18 +300,22 @@ def update_animation(i):
 
     for body in Body.BodyList:
         body.line.set_data(body.xpositions[0:i], body.ypositions[0:i])
+        # body.point.set(center=(body.xpositions[i], body.ypositions[i]))
+        # sim_axis.add_patch(body.point)
         body.point.set_data(body.xpositions[i], body.ypositions[i])
         body.text.set_position((body.xpositions[i], body.ypositions[i]))
 
         output_list.append(body.line)
         output_list.append(body.point)
         output_list.append(body.text)
+    
+    distance_graph.set_data(days[:i], earth_mars_distances_au[:i])
+    time_graph.set_data(days[:i], earth_mars_times[:i])
 
-    ax.axis('equal')
-    ax.set_xlim(-2.5 * AU, 2.5 * AU)
-    ax.set_ylim(-2 * AU, 2 * AU)
+    output_list.append(distance_graph)
+    output_list.append(time_graph)
 
-    return tuple(output_list)
+    return output_list
 
 anim = animation.FuncAnimation(
     fig,
