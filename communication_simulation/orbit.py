@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib import animation
 import matplotlib.gridspec as gridspec
-import numpy as np
 
 # Constants
 G = 6.67e-11 # Gravitational Constant (m^3/(kg*s^2))
@@ -21,7 +20,7 @@ dt: float = DAY_SECONDS / 2
 t_end = 100 * 365 * DAY_SECONDS
 
 fig = plt.figure()
-fig.set_size_inches(12, 10)
+fig.set_size_inches(11, 110/12)
 
 gs = gridspec.GridSpec(2, 2, height_ratios=[3,1])
 gs.update(wspace=0.5)
@@ -38,6 +37,8 @@ sim_axis.set_facecolor('gray')
 sim_axis.axis('equal')
 sim_axis.set_xlim(-4 * AU, 4 * AU)
 sim_axis.set_ylim(-2 * AU, 2 * AU)
+sim_axis.set_xlabel("Distance (m)")
+sim_axis.set_ylabel("Distance (m)")
 
 dist_ax.grid()
 dist_ax.set_xlabel("Day")
@@ -325,8 +326,9 @@ anim = animation.FuncAnimation(
     fig,
     func=update_animation,
     frames=int(t_end / dt),
-    interval=1,
-    blit=False
+    interval=50,
+    blit=False,
+    repeat=False
 )
 
 plt.show()
