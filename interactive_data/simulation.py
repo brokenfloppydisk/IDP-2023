@@ -103,6 +103,8 @@ def simulate() -> None:
     global water_recycled_list
     global water_gained_list
 
+    failed :bool = False
+
     # Open the CSV file in write mode and create a CSV writer
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -116,6 +118,15 @@ def simulate() -> None:
 
         # During Flight
         for day in range(1, FLIGHT_DAYS + 1):
+            if failed:
+                water_stored_list.append(0)
+                water_gained_list.append(0)
+                water_recycled_list.append(0)
+                water_used_list.append(0)
+                water_lost_list.append(0)
+                continue
+            else:
+                failed = water_stored <= 0
             water_used_today = 0
             water_lost_today = 0
             water_recycled_today = 0
@@ -132,6 +143,7 @@ def simulate() -> None:
             total_water_recycled += water_recycled_today
 
             water_stored -= water_lost_today
+            water_stored = max(water_stored, 0)
 
             water_stored_list.append(water_stored)
             water_gained_list.append(0)
@@ -166,6 +178,15 @@ def simulate() -> None:
 
         # During Colonization
         for day in range(1, COLONY_DAYS + 1):
+            if failed:
+                water_stored_list.append(0)
+                water_gained_list.append(0)
+                water_recycled_list.append(0)
+                water_used_list.append(0)
+                water_lost_list.append(0)
+                continue
+            else:
+                failed = water_stored <= 0
             water_used_today = 0
             water_lost_today = 0
             water_recycled_today = 0
@@ -186,6 +207,9 @@ def simulate() -> None:
                     if cycle % 2 == 0:
                         # Dishwasher (5 gal) (every 2 days)
                         individual_water += get_individual_water_usage(5)
+                elif water_stored < START_WATER:
+                    # if there is nearly no water, cut water usage to only basic needs
+                    individual_water = get_individual_water_usage(3.5)
                 else:
                     # 5 gal dishwasher
                     # 20 gal shower
@@ -239,6 +263,7 @@ def simulate() -> None:
             water_stored += water_gained_today - water_lost_today
             # Stop water stored from exceeding max
             water_stored = min(water_stored, MAX_WATER_STORED)
+            water_stored = max(water_stored, 0)
 
             water_stored_list.append(water_stored)
             water_gained_list.append(water_gained_today)
